@@ -12,9 +12,11 @@ An interactive, stateful code-teaching workspace for learning how to build custo
    ```bash
    tutorial/.venv/bin/python tutorial/build.py --check
    ```
-3. **Open the course in your browser:**
+   *(If setting up a fresh Python environment, install dependencies from [`requirements.txt`](./requirements.txt): `pip install -r tutorial/requirements.txt`.)*
+3. **Open the course in your browser (or view on GitHub Pages at `/tutorial/`):**
    - Course Landing Page: [`tutorial/index.html`](./index.html)
    - Lesson 0001: [`tutorial/lessons/0001-boot-sram-and-heartbeat.html`](./lessons/0001-boot-sram-and-heartbeat.html)
+   - GitHub Pages CI workflow: [`.github/workflows/pages.yml`](../.github/workflows/pages.yml) builds `tutorial/` into `_site/tutorial/` alongside `web/` at `_site/` on every push to `main`.
 
 ## Published Lessons
 

@@ -2,5 +2,6 @@
 .envrc
 .direnv
 **/build
+_site/
 *.log
 *.mmon
