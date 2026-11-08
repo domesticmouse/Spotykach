@@ -104,3 +104,25 @@ This builds the firmware's transfer code for the host (C++17 compiler needed) an
 2. Push a tag `spotykach-transfer-v<version>`, e.g. `spotykach-transfer-v1.0.1`.
 
 The publish workflow (`.github/workflows/transfer-publish.yml`) runs the tests, checks that the tag matches `package.json`, and publishes to npm through trusted publishing, with no token. The package's npm settings list this repository and workflow as its trusted publisher.
+
+## Interface
+- `[index.js:USB_VENDOR_ID]`, `[index.js:USB_PRODUCT_ID]`, `[index.js:PROTO_MAJOR]`, `[index.js:PROTO_MINOR]`, `[index.js:CMD]`, `[index.js:STATUS]`, `[index.js:STATUS_TEXT]`, `[index.js:FRAME_ERROR]`, `[index.js:SECTOR_SIZE]`, `[index.js:SLOT_OCCUPIED]`, `[index.js:SLOT_LOADABLE]`, `[index.js:SLOT_PARSED]`, `[index.js:DEVICE_FORMAT]`, `[index.js:CONFIG_KEYS]`, `[index.js:CUE_SIZE_MODE]`, `[index.js:MAX_FILE_SIZE]`: Protocol, format, and configuration constants.
+- `[index.js:DeviceError]`, `[index.js:TimeoutError]`, `[index.js:NeedsAuthorizationError]`, `[index.js:MidiPortNotFoundError]`, `[index.js:ProtocolMismatchError]`: Error classes for protocol, timeout, and Web MIDI / Web Serial connection failures.
+- `[index.js:SkLink]`: Serial link client (`open`, `request`, `exclusive`, `startKeepAlive`, `stopKeepAlive`, `hello`, `list`, `upload`, `readSlot`, `download`, `remove`, `hasConfig`, `readConfig`, `writeConfig`, `hasFiles`, `readFile`, `writeFile`, `exit`, `close`).
+- `[index.js:crc32]`, `[index.js:isSupported]`, `[index.js:grantedPort]`, `[index.js:enterTransferMode]`, `[index.js:handshake]`, `[index.js:connect]`, `[index.js:authorizePort]`, `[index.js:inspectWav]`, `[index.js:checkUploadable]`, `[index.js:encodeWav]`, `[index.js:convertAudio]`, `[index.js:parseConfig]`, `[index.js:formatConfig]`, `[index.js:isFileName]`: Connection, WAV processing, config formatting, and filename validation functions.
+- `[index.d.ts:SerialPortLike]`, `[index.d.ts:DeviceInfo]`, `[index.d.ts:SlotEntry]`, `[index.d.ts:TransferOptions]`, `[index.d.ts:RangeReader]`, `[index.d.ts:Connection]`, `[index.d.ts:ConnectOptions]`, `[index.d.ts:WavInfo]`, `[index.d.ts:ConfigKey]`, `[index.d.ts:ConfigValues]`: TypeScript type contracts.
+
+## Invariants
+- `[index.js:SkLink.request]` & `[index.js:SkLink.exclusive]`: Frame requests (`_requestLock`) and multi-step operations (`_opLock`) execute strictly one at a time without interleaving; `upload`, `readSlot`, `download`, `writeConfig`, and `writeFile` require `hello()` to have populated `link.info` first.
+- `[index.js:handshake]`: Verifies `info.protoMajor === PROTO_MAJOR` (`1`), calling `link.exit()` and throwing `ProtocolMismatchError` if the major version differs.
+- `[index.js:SkLink.readSlot]`: Aligns `DOWNLOAD_READ` offsets down to multiples of `SECTOR_SIZE` (`512`) and slices the response to satisfy arbitrary byte range reads.
+- `[index.js:checkUploadable]` & `[index.js:encodeWav]`: Enforces 48 kHz stereo 32-bit float WAV (`DEVICE_FORMAT`) within `maxFrames` and `maxCues`, padding `LIST/INFO/INAM` to 4 bytes so the `data` chunk starts 4-byte aligned.
+- `[index.js:isFileName]`: Restricts small file paths to `NAME.EXT` or `SK/NAME.EXT` (`< 32` characters, `.txt`, `.md`, or `.json`) and `writeFile` payloads to at most `MAX_FILE_SIZE` (`32736` bytes).
+
+## Side Effects
+- `[index.js:enterTransferMode]`, `[index.js:connect]`, `[index.js:authorizePort]`, `[index.js:SkLink.open]`: Requests Web MIDI (`navigator.requestMIDIAccess({ sysex: true })`) to transmit the SysEx mode switch and opens Web Serial (`navigator.serial`, 115200 baud) with a 2000 ms idle `PING` keep-alive interval (`startKeepAlive`).
+- `[index.js:loadReadChunk]` & `[index.js:saveReadChunk]`: Reads and saves the adaptive download chunk ceiling in `window.localStorage` under `"spotykach.readChunk"`.
+- `[index.js:convertAudio]`: Decodes and resamples input audio buffers to 48 kHz stereo using browser `OfflineAudioContext`.
+
+## Verification
+- Run: `make -j8 && ./tests/transfer/run.sh`

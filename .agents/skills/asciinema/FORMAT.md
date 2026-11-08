@@ -1,0 +1,127 @@
+# asciicast File Format Specification
+
+Reference specification for `.cast` recording files used across the asciinema ecosystem.
+
+## Version Comparison
+
+| Feature | asciicast v1 | asciicast v2 | asciicast v3 |
+| :--- | :--- | :--- | :--- |
+| **Data Format** | Monolithic JSON Object | Newline-Delimited JSON (NDJSON) | Newline-Delimited JSON (NDJSON) |
+| **Streaming Support** | No (buffer in memory) | Yes (append line-by-line) | Yes (append line-by-line) |
+| **Crash Resilience** | None (corrupt on interrupt) | Full (valid up to last written line) | Full (valid up to last written line) |
+| **Timestamps** | Inter-frame delays | **Absolute elapsed seconds** ($t - t_0$) | **Relative delta seconds** ($\Delta t$ from previous event) |
+| **Exit Code** | No | No | Yes (`"x"` event) |
+| **Comment Lines** | No | No | Yes (`# comment line`) |
+
+---
+
+## asciicast v2 Specification
+
+An `asciicast v2` file consists of:
+1. **Line 1**: A single JSON object representing the recording header.
+2. **Lines 2+**: A stream of 3-element JSON arrays representing events: `[time, type, data]`.
+
+### Header Object (Line 1)
+
+```json
+{
+  "version": 2,
+  "width": 80,
+  "height": 24,
+  "timestamp": 1697400000,
+  "duration": 42.15,
+  "idle_time_limit": 2.0,
+  "command": "/bin/zsh",
+  "title": "Tutorial Demo",
+  "env": {
+    "TERM": "xterm-256color",
+    "SHELL": "/bin/zsh"
+  },
+  "theme": {
+    "fg": "#d0d0d0",
+    "bg": "#151515",
+    "palette": "#151515:#ac4142:#7e8e50:#e5b567:#6c99bb:#9f4e85:#7dd6cf:#d0d0d0:#505050:#ac4142:#7e8e50:#e5b567:#6c99bb:#9f4e85:#7dd6cf:#f5f5f5"
+  }
+}
+```
+
+#### Fields:
+- `version` (*integer, required*): Must be `2`.
+- `width` (*integer, required*): Terminal columns.
+- `height` (*integer, required*): Terminal rows.
+- `timestamp` (*integer, optional*): Unix epoch timestamp when recording started.
+- `duration` (*float, optional*): Total recording length in seconds.
+- `idle_time_limit` (*float, optional*): Maximum idle duration in seconds to preserve during playback.
+- `command` (*string, optional*): Command executed inside the session.
+- `title` (*string, optional*): Descriptive recording title.
+- `env` (*object, optional*): Environment variables captured at startup (typically `TERM` and `SHELL`).
+- `theme` (*object, optional*): Color scheme overrides with `fg`, `bg`, and 8- or 16-color colon-delimited `palette`.
+
+### Event Line Schema: `[time, type, data]`
+
+- **`time`** (*float*): Absolute elapsed seconds from recording start ($t_0$).
+- **`type`** (*string*):
+  - `"o"`: **Output (stdout)**. Terminal escape sequences and UTF-8 characters printed to screen.
+  - `"i"`: **Input (stdin)**. Keystrokes received from keyboard (disabled by default).
+  - `"m"`: **Marker**. Bookmark/chapter delimiter; `data` contains optional label.
+  - `"r"`: **Resize**. Window dimension change (`"{cols}x{rows}"`).
+- **`data`** (*string*): UTF-8 payload.
+
+#### Example Stream:
+```json
+{"version": 2, "width": 80, "height": 24, "timestamp": 1697400000}
+[0.102450, "o", "\u001b[1;32muser@host\u001b[0m:\u001b[1;34m~\u001b[0m$ "]
+[0.650120, "o", "echo 'Hello World'\r\n"]
+[0.650800, "o", "Hello World\r\n"]
+[1.200000, "m", "Chapter 2: Resizing"]
+[1.500000, "r", "100x30"]
+```
+
+---
+
+## asciicast v3 Specification (CLI 3.x / Rust)
+
+Introduced with asciinema CLI 3.0:
+
+### 1. Relative Delta Timestamps
+Instead of absolute timestamps from $t_0$, `time` is the seconds elapsed since the **immediately preceding event**. Lines can be cut, spliced, or reordered without recalculating timestamps for the rest of the file.
+
+### 2. Nested Terminal Metadata
+Terminal configuration is grouped under `"term"`:
+```json
+{
+  "version": 3,
+  "term": {
+    "cols": 80,
+    "rows": 24,
+    "type": "xterm-256color"
+  },
+  "timestamp": 1697400000
+}
+```
+
+### 3. Exit Code Event (`"x"`)
+Records child process termination status:
+```json
+[0.051200, "x", 0]
+```
+
+*Note on final frame holding*: In v3 recordings, preceding the `"x"` event with a 2–3s delay (e.g. `[3.0, "x", 0]`) holds the completed terminal screen so viewers can read final output before video players or animated GIFs loop. When converting to `asciicast v2` (which has no `"x"` event), replace the `"x"` event with a trailing no-op stdout event (`[total_time, "o", ""]`) to preserve the hold duration.
+
+### 4. Inline Comments
+Lines starting with `#` are treated as comments and ignored by parsers:
+```text
+# Step 1: Initialize repository
+[0.100000, "o", "git init\r\n"]
+```
+
+### 5. Web Player Compatibility (`asciinema-player` `< 3.10` vs `>= 3.10`)
+- `asciinema` CLI 3.x records in `asciicast v3` (`"version": 3`) by default.
+- **`asciinema-player` versions `< 3.10.0` (including `3.8.x` and `3.9.x`) only parse `asciicast v1` and `v2`** and fail with the explosion emoji (`💥`) if fed a `{"version": 3}` header.
+- Convert v3 recordings to v2 (`trim-cast.py --to-v2`, `asciinema convert -f asciicast-v2`, or an in-memory JS normalizer passed via `{ data: v2Text }`) whenever targeting `asciinema-player` `< 3.10.0`.
+
+### 6. Chapter Marker (`"m"`) Timestamp & Cursor-Line Semantics
+- When `asciinema-player` auto-pauses on a marker (`pauseOnMarkers: true`) or seeks to a marker (`player.seek(T_m)`), it evaluates all `"o"` events whose timestamp satisfies `t <= T_m`.
+- **Exact `T_m` Rounding Parity in `v3 -> v2` Compilers**: When compiling warped `asciicast v2` timestamps with `.toFixed(6)` (`Number(warpedAbs.toFixed(6))`), snap `endTime`, `warpedAbs`, and each chapter's `playTime` to the exact rounded `markerTime = Number(warpedAbs.toFixed(6))` written to the v2 stream. Storing an unrounded IEEE-754 float for `playTime` causes `player.seek(playTime)` (via `[` / `]` or chapter pills) to land slightly before `markerTime` whenever `.toFixed(6)` rounds up, skipping the final `"o"` event(s) of the stop-point frame.
+- **Multi-Chunk `dt = 0.0` Synchronized Output Frames**: Any `"o"` event placed **after** an `"m"` marker with `dt = 0.0` shares the exact same `asciicast v2` timestamp `T_m`, whereas playback with `pauseOnMarkers: true` stops at the `"m"` event in stream order before trailing `dt = 0.0` chunks. When matching a TUI frame that spans multiple `dt = 0.0` PTY chunks (`\x1b[?2026h`…`\x1b[?2026l`), `mark-cast.py` advances past consecutive `dt = 0.0` `"o"` events so the `"m"` marker sits after the complete frame flush.
+- **Command-Entry Cursor Placement**: In `zsh` with bracketed paste (`\x1b[?2004h`), pressing `Enter` after pasting a command emits an `[UNREV]` redraw frame (`\x1b[A\x1b[...C\x1b[27m...`) that ends with a cursor-down sequence (`\x1b[1B\r\x1b[K`). To pause with the command in normal video and the cursor resting at the end of the command on the **same line**, split `\x1b[1B\r\x1b[K` into a separate `"o"` event after the `"m"` marker with `dt = 0.02s` (`mark-cast.py` performs this split automatically).
