@@ -771,7 +771,7 @@ def validate_html_output(
 
     # 2. Check for leaked raw directives or tokens outside code blocks
     stripped_code = re.sub(
-        r"<pre\b[^>]*>.*?</pre>|<code\b[^>]*>.*?</code>",
+        r"<pre\b[^>]*>.*?</pre>|<code\b[^>]*>.*?</code>|<script\b[^>]*>.*?</script>",
         "",
         html_text,
         flags=re.DOTALL,
@@ -782,6 +782,14 @@ def validate_html_output(
         errors.append(f"{out_path}: Raw {{#anchor}} token leaked into HTML")
     if "<!--FENCED_CODE_PLACEHOLDER_" in html_text:
         errors.append(f"{out_path}: Unrestored code placeholder leaked into HTML")
+    tex_match = re.search(
+        r"\$[^$\n]+\$|\\(?:ge|le|neq|to|times|cdot|text|frac|sqrt)\b",
+        stripped_code,
+    )
+    if tex_match:
+        errors.append(
+            f"{out_path}: Unrendered TeX markup '{tex_match.group(0)}' leaked into HTML (use Unicode/HTML or <code> instead)"
+        )
 
     # 3. Validate internal links
     for m in re.finditer(r'href="([^"]+)"', html_text):

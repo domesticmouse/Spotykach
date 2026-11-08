@@ -25,7 +25,7 @@ Table: Dual verification targets in `tutorial/apps/<NNNN-slug>/Makefile`
 | Command | Compiler & Target | What It Verifies |
 | :--- | :--- | :--- |
 | `make` | `arm-none-eabi-g++ -std=c++17` (`Cortex-M7`, `alt_sram.lds`) | Links against `lib/libDaisy/build/libdaisy.a` and `lib/DaisySP/build/libdaisysp.a`, producing `build/<target>.elf` and flashable `build/<target>.bin` with memory region usage table. |
-| `make test` | Host `c++ -std=c++17 -Wall -Wextra -Werror -pedantic` | Compiles and runs `tests/test_*.cpp` on your computer in $< 1\text{ s}$, verifying every state transition, boundary condition, and DSP calculation with deterministic assertions. |
+| `make test` | Host `c++ -std=c++17 -Wall -Wextra -Werror -pedantic` | Compiles and runs `tests/test_*.cpp` on your computer in < 1 s, verifying every state transition, boundary condition, and DSP calculation with deterministic assertions. |
 | `make program-dfu` | `dfu-util` (`0483:df11` @ `0x90040000`) | Flashes `build/<target>.bin` into the Spotykach QSPI flash over the rear USB-C port when the Daisy Bootloader is breathing white. |
 
 ---
@@ -71,7 +71,7 @@ Spotykach's custom bootloader (`bootloader-spotykach-v2.bin`) enumerates USB DFU
 
 1. Connect a data-capable USB-C cable from your computer to the **rear USB-C port** on the Spotykach PCB.
 2. Put Spotykach into Daisy Bootloader DFU mode using either method:
-   - **If already running Spotykach (or Lesson 0001+) firmware**: Hold the **Boot/Reset button** (`D2`) on the back of the unit for **$\ge 3$ seconds** until the bottom pad LEDs breathe smoothly in white.
+   - **If already running Spotykach (or Lesson 0001+) firmware**: Hold the **Boot/Reset button** (`D2`) on the back of the unit for **≥ 3 seconds** until the bottom pad LEDs breathe smoothly in white.
    - **From power-off or hardware reset**: Press the hardware Reset button, then immediately hold the Boot button while the LEDs begin breathing white.
 3. Flash the compiled `.bin` from your lesson directory:
 

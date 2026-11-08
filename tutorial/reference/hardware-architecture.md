@@ -36,7 +36,7 @@ Table: Spotykach Daisy Seed pin mapping (`src/hw/hardware.cpp`)
 
 | Subsystem | Daisy Seed Pin(s) | Direction / Bus | Hardware Notes & Signal Polarity |
 | :--- | :--- | :--- | :--- |
-| **Boot / Reset Button** | `seed::D2` | Digital In (`NOPULL`) | Active-low (`POLARITY_INVERTED`). Tap release resets MCU; $\ge 3000\text{ ms}$ hold enters DFU bootloader. |
+| **Boot / Reset Button** | `seed::D2` | Digital In (`NOPULL`) | Active-low (`POLARITY_INVERTED`). Tap release resets MCU; ≥ 3000 ms hold enters DFU bootloader. |
 | **Rear USB-C Port** | `seed::D29` (`D-`), `seed::D30` (`D+`) | `UsbHandle::FS_EXTERNAL` | External USB port used for DFU flashing, USB MIDI, and USB CDC sample transfer. |
 | **WS2812 RGB LEDs (83x)** | `seed::D17` | `TIM_3` `CH4` PWM + `DMA2` | Single serial chain: pads, two 32-LED rings (`LED_RING_A`/`B`), mode LEDs, and faders. |
 | **Clock Input** | `seed::D3` | Digital In (`NOPULL`) | NPN transistor buffer inverts signal on PCB: read via `!clock_in_.Read()`. |

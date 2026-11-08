@@ -48,8 +48,8 @@ flowchart LR
 Here is a fun trap when writing your own `BOOT_SRAM` firmware from scratch: once the bootloader jumps into your `main()` in RAM, your code owns the CPU. If you forget to wire up a way back to the bootloader, the next time you try to flash an update over the rear USB-C port, nothing will answer. You then have to unscrew the enclosure to reach the tiny hardware buttons on the Daisy Seed itself.
 
 So, how do we make sure we never brick our board? In the production Spotykach firmware (`app.cpp` lines 160–163 and `src/hw/hardware.cpp` lines 218–224), the rear **Reset / Boot** button (wired to Daisy Seed pin `seed::D2`) implements a two-tier safety mechanism:
-- **Hold for $\ge 3000\text{ ms}$**: While the button is still held down, `AppImpl::Loop()` detects `GetBootButtonHeldTime() >= 3000` and immediately invokes `System::ResetToBootloader(System::BootloaderMode::DAISY_INFINITE_TIMEOUT)`. The bottom pad LEDs begin breathing white so you know your finger can release the button and `make program-dfu` is ready.
-- **Short tap and release ($< 3000\text{ ms}$)**: When you release the button (`!boot_btn_.Pressed() && was_pressed`), `Hardware::ProcessDigitalControls()` calls `HAL_NVIC_SystemReset()`, performing a clean software reboot.
+- **Hold for ≥ 3000 ms**: While the button is still held down, `AppImpl::Loop()` detects `GetBootButtonHeldTime() >= 3000` and immediately invokes `System::ResetToBootloader(System::BootloaderMode::DAISY_INFINITE_TIMEOUT)`. The bottom pad LEDs begin breathing white so you know your finger can release the button and `make program-dfu` is ready.
+- **Short tap and release (< 3000 ms)**: When you release the button (`!boot_btn_.Pressed() && was_pressed`), `Hardware::ProcessDigitalControls()` calls `HAL_NVIC_SystemReset()`, performing a clean software reboot.
 
 Try dragging the hold-duration slider and toggling the `D2` button state in the interactive simulator below to see how this state machine behaves:
 
@@ -142,7 +142,7 @@ class BootController {
 - **`namespace spotykach { ... }`**: Groups all Spotykach types under the `spotykach::` prefix so names never collide with `daisy::` or `daisysp::`.
 - **`enum class BootAction : uint8_t`**: A C++17 strongly typed enumeration backed by a single byte (`uint8_t`). Unlike C `enum`, you must write `BootAction::EnterDfuBootloader`, preventing accidental integer mix-ups.
 - **`static constexpr uint32_t kDfuHoldThresholdMs = 3000;`**: `constexpr` evaluates the constant at compile time with zero RAM cost.
-- **Falling-edge detection (`!is_pressed && was_pressed_`)**: By storing the previous tick's button state in private member `was_pressed_`, `Update()` detects the exact moment a short press is released (`true` $\to$ `false`) and returns `BootAction::SystemReset` once.
+- **Falling-edge detection (`!is_pressed && was_pressed_`)**: By storing the previous tick's button state in private member `was_pressed_`, `Update()` detects the exact moment a short press is released (`true` → `false`) and returns `BootAction::SystemReset` once.
 
 ### Block 3: Connecting `BootController` to `libDaisy` (`app.h` & `app.cpp`) {#block-3-app}
 
@@ -240,7 +240,7 @@ void Application::Loop() {
 ```
 
 - **`seed_.Init(true)`**: Passing `true` enables STM32H750 **Boost Mode** (480 MHz CPU clock instead of 400 MHz), configures the Memory Protection Unit (MPU) for non-cached `RAM_D2` DMA, and initialises external 64 MB SDRAM.
-- **`boot_btn_.Init(seed::D2, 0, Switch::TYPE_MOMENTARY, Switch::POLARITY_INVERTED, GPIO::Pull::NOPULL)`**: Matches `src/hw/hardware.cpp` line 50 verbatim. The rear button pulls `seed::D2` to ground (`0V`) when pressed, so `Switch::POLARITY_INVERTED` maps `0V` $\to$ `Pressed() == true`, while an external pull-up resistor on the Spotykach PCB handles the idle `3.3V` state (`GPIO::Pull::NOPULL`).
+- **`boot_btn_.Init(seed::D2, 0, Switch::TYPE_MOMENTARY, Switch::POLARITY_INVERTED, GPIO::Pull::NOPULL)`**: Matches `src/hw/hardware.cpp` line 50 verbatim. The rear button pulls `seed::D2` to ground (`0V`) when pressed, so `Switch::POLARITY_INVERTED` maps `0V` → `Pressed() == true`, while an external pull-up resistor on the Spotykach PCB handles the idle `3.3V` state (`GPIO::Pull::NOPULL`).
 
 ### Block 4: Firmware Entrypoint & `bleeptools/libDaisy` USB Strings (`main.cpp`) {#block-4-main}
 

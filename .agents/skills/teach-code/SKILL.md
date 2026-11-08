@@ -88,7 +88,7 @@ All course pages (`index.md`, `lessons/*.md`, `reference/*.md`) use YAML frontma
 - **Verification & Test Coverage Gates**: `:::verify id="verify-NNNN" title="Verification Lab: ..." badge="..."` (with optional `tier`, `caught`, `missed` attributes when mutation testing is used) containing prose, test/verification commands and code blocks, and `- [ ]` step checklist items.
 - **Multiple-Choice Quizzes**: `:::quiz id="quiz-NNNN" title="Retrieval Practice: ..." badge="3 Questions • Equal-Length Options"` with a YAML list of questions (`question`, `wrong_hint`, and 4 `options` with `letter`, `text`, `correct`, `explain`). `build.py --check` enforces that all 4 options within each question have identical word counts!
 - **Interactive Widgets**: `{{widget:lesson-cards}}`, `{{widget:reference-cards}}`, and custom interactive simulators (`{{widget:<simulator-id>}}`) defined in `assets/course.js`. In `build_lesson_cards_html()`, strip any leading `Lesson NNNN •` prefix from `badge` before combining it with `LESSON {num}` so `.lesson-card-meta` never duplicates the lesson number (e.g., `LESSON 0001 • Embedded C99 & GPIO`).
-- **Heading Anchor Suffixes (`{#id}`)**: Support `{#anchor-id}` at the end of Markdown headings in `build.py` (converting `## Heading {#my-id}` to `<h2 id="my-id">Heading</h2>`) so raw `{#...}` tokens never leak into rendered HTML.
+- **Heading Anchor Suffixes (`{#id}`) & Plain Unicode (No Raw LaTeX `$...$`)**: Support `{#anchor-id}` at the end of Markdown headings in `build.py` (converting `## Heading {#my-id}` to `<h2 id="my-id">Heading</h2>`) so raw `{#...}` tokens never leak into rendered HTML. Because compiled HTML pages do not bundle a LaTeX renderer, never write raw `$...$` or `\ge` / `\to` / `\text{...}` TeX markup in Markdown prose; use plain Unicode (`≥`, `≤`, `→`, `×`) and inline backticks (`` `...` ``), and validate against leaked TeX markup in `build.py --check`.
 
 ### Runnable Per-Lesson Companion Apps (`apps/<NNNN-lesson-slug>/`)
 
@@ -98,7 +98,7 @@ Back every lesson with a real, runnable directory under `apps/<NNNN-lesson-slug>
    - Use `.venv/bin/python build.py --check` (created via `uv venv` and `uv pip install markdown-it-py pyyaml`) to compile and validate all Markdown lessons, reference sheets, internal links, and quiz option word counts.
 2. **Copy-Then-Apply Progression:**
    - Start at the first lesson (`apps/0001-.../`) and progressively grow the application across lessons.
-   - For each subsequent lesson $N$, copy the previous lesson's directory into `apps/<N>/` (using copy-on-write such as `cp -cR` on macOS/APFS when build directories are cloned), apply the new lesson's code and test updates, and update file timestamps (`touch`) if reusing incremental build artifacts so the compiler or test runner always builds the new lesson's code.
+   - For each subsequent lesson `NNNN`, copy the previous lesson's directory into `apps/<NNNN-slug>/` (using copy-on-write such as `cp -cR` on macOS/APFS when build directories are cloned), apply the new lesson's code and test updates, and update file timestamps (`touch`) if reusing incremental build artifacts so the compiler or test runner always builds the new lesson's code.
 3. **Execute, Lint, Test & Reconcile Lessons with Reality:**
    - Run the formatter, linter, test suite, and any mutation or verification tools taught in the lesson against `apps/<NNNN-slug>/`.
    - Ensure zero compiler/linter warnings and 100% passing tests (plus zero missed mutants when mutation testing is part of the workflow).

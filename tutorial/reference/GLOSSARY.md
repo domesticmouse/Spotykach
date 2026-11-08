@@ -53,5 +53,5 @@ The non-real-time `while (true)` loop running in `main()` at lowest priority, re
 _Avoid_: "Audio thread" or "UI interrupt".
 
 **Audio Callback (`AudioCallback`)**:
-The hard-real-time interrupt service routine (ISR) triggered by the `SAI1` DMA controller every 96 stereo frames at 48 kHz (every $2.0\text{ ms}$), which must compute 96 stereo float samples in $[-1.0\text{f}, +1.0\text{f}]$ without ever blocking or performing I2C/SD/USB I/O.
+The hard-real-time interrupt service routine (ISR) triggered by the `SAI1` DMA controller every 96 stereo frames at 48 kHz (every 2.0 ms), which must compute 96 stereo float samples in `[-1.0f, +1.0f]` without ever blocking or performing I2C/SD/USB I/O.
 _Avoid_: "Main loop audio processing".
