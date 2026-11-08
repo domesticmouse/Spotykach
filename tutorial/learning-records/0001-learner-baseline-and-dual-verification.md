@@ -1,0 +1,3 @@
+# Learner Baseline and Dual-Verification Architecture
+
+The learner is building a complete custom Spotykach firmware from scratch using this repository as the source of truth, starting as a beginner to C++17, embedded STM32H7 hardware, and real-time audio DSP. Every lesson must introduce C++17 language constructs (`namespace`, `class`, `constexpr`, `enum class`, fixed-width types, references, and deleted copy/move constructors) from first principles alongside the hardware and DSP mechanics, and verify each companion project (`tutorial/apps/<NNNN-slug>/`) both by compiling the real ARM Cortex-M7 `BOOT_SRAM` firmware binary (`.elf`/`.bin`) and by running a deterministic host C++17 unit test suite (`make test`).

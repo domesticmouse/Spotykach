@@ -1,0 +1,7 @@
+#pragma once
+
+#define NOCOPY(T)                  \
+    T(const T& other) = delete;    \
+    T(T&& other) = delete;         \
+    T& operator=(const T& other) = delete; \
+    T& operator=(T&& other) = delete;

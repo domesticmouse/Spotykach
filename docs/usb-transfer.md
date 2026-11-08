@@ -136,7 +136,7 @@ If the page gets no reply within 3 s, it reports "device did not respond (old fi
 | `0x20` | DOWNLOAD_OPEN | `tape u8, slot u8, rsv u16` | `rsv u8×3, size u32` | idle |
 | `0x21` | DOWNLOAD_READ | `offset u32, length u32` (≤ `MAX_CHUNK`) | `rsv u8×3, data[length]` | downloading |
 | `0x22` | DOWNLOAD_CLOSE | — | — | any |
-| `0x30` | DELETE | `tape u8, slot u8, rsv u16` | — | idle |
+| `0x30` | REMOVE | `tape u8, slot u8, rsv u16` | — | idle |
 | `0x40` | CONFIG_READ | — | `rsv u8×3, text[≤MAX_CHUNK]`; `NOT_FOUND` without the file | idle |
 | `0x41` | CONFIG_WRITE | `rsv u32, text[≤MAX_CHUNK]` | — | idle |
 | `0x42` | FILE_READ | `name[32]` | `rsv u8×3, text[≤MAX_FILE]`; `NOT_FOUND` without the file | idle |
@@ -157,7 +157,7 @@ If the page gets no reply within 3 s, it reports "device did not respond (old fi
 | max_cues | u16 | `kMaxFileCuePoints` (255): `kMaxSlicePointCount` minus the end slice the device appends on load |
 | rsv | u16 | |
 | card_total_kib, card_free_kib | u32, u32 | from `f_getfree` |
-| fw_version | u8 len + bytes | `kFirmwareVersion` from `config.h`, e.g. `1.3.1` (§7.6) |
+| fw_version | u8 len + bytes | `kFirmwareVersion` from `config.h`, e.g. `1.4.0` (§7.6) |
 
 **LIST response:** `status u8, count u8` followed by `count` entries, one per slot, ordered by tape then slot:
 
@@ -232,7 +232,7 @@ On macOS the serial tty can drop the tail of a large device-to-host burst when C
 
 The browser console logs every lost reply and the read size the download finished with.
 
-**Delete:** `DELETE`, then `LIST`. Deleting an empty slot returns OK.
+**Delete:** `REMOVE` (`Command::remove` / `CMD.remove`), then `LIST`. Deleting an empty slot returns OK.
 
 **Settings:** `CONFIG_READ`, edit, `CONFIG_WRITE` (§5.6).
 
@@ -349,10 +349,9 @@ No libDaisy changes were needed:
 ### 7.6 Version
 - The firmware version is a constant in `src/core/config.h`, next to the other `static constexpr` values in `namespace spotykach`:
   ```cpp
-  static constexpr const char* kFirmwareVersion = "1.3.1";
+  static constexpr const char* kFirmwareVersion = "1.4.0";
   ```
-  - The format is `MAJOR.MINOR.PATCH`, with no `v` prefix. It is updated by hand in each release commit, alongside the release tag (e.g. tag `v1.3.1` ↔ `"1.3.1"`).
-  - The value is `"1.3.1"` until the first release that includes transfer mode, which bumps it.
+  - The format is `MAJOR.MINOR.PATCH`, with no `v` prefix. It is updated by hand in each release commit, alongside the release tag (e.g. tag `v1.4.0` ↔ `"1.4.0"`).
 - `HELLO` returns `kFirmwareVersion` as `fw_version`, and the web app shows it in the header.
 - The protocol version (`proto_major`/`proto_minor`) is a separate constant in `src/transfer/`. It changes only when the wire protocol changes.
 
@@ -461,7 +460,7 @@ The firmware's `service`, `link`, `card`, `wav` and `slots` sources are compiled
 
 - **`card_load_test`:** loads WAVs whose audio starts at every alignment, containing a NaN, an Inf and 255 cues, through `Card::init_read_audio`/`read_audio`. Checks the samples, NaN/Inf → 0, 256 slices, and no unaligned DMA.
 - **`harness`:** the device's transfer service on stdin/stdout. `transfer.test.mjs` runs `@synthuxacademy/spotykach-transfer` against it over a fake serial port. It covers:
-  - `HELLO`, `LIST`, upload, byte-exact download and `DELETE`;
+  - `HELLO`, `LIST`, upload, byte-exact download and `REMOVE`;
   - `readSlot` ranges at unaligned offsets;
   - upload recovery from a corrupted request, a lost reply and a 2.5 s stall;
   - download recovery from cut, dropped and burst-truncated replies;

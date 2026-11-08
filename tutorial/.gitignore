@@ -1,0 +1,8 @@
+.venv/
+_site/
+index.html
+glossary.html
+lessons/*.html
+reference/*.html
+apps/**/build/
+__pycache__/

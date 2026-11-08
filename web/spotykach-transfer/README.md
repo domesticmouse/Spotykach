@@ -84,7 +84,7 @@ The major version follows the protocol major version (`PROTO_MAJOR`), so `1.x` t
 
 | Package | Protocol | Firmware |
 |---|---|---|
-| 1.0.1 | 1.0 | `uploader` branch, first release with USB transfer |
+| 1.0.1 | 1.0 | `uploader` branch (`kFirmwareVersion = "1.4.0"` in `src/core/config.h`), first release with USB transfer |
 | 1.1.0 | 1.1 | settings (`readConfig`, `writeConfig`); works with 1.0 firmware except for those |
 | 1.2.0 | 1.2 | small text files (`readFile`, `writeFile`); works with 1.0 and 1.1 firmware except for those |
 
