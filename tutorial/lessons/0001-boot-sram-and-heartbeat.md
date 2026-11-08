@@ -11,14 +11,16 @@ card:
 
 ## 1. Why Spotykach Cannot Boot Like a Normal Microcontroller {#why-boot-sram}
 
-At the heart of the Spotykach PCB sits an **Electro-Smith Daisy Seed** powered by an **STM32H750IBK6** microcontroller (an ARM Cortex-M7 running at 480 MHz){{sidenote:Despite its 480 MHz clock speed and 64 MB of external SDRAM, the STM32H750 "Value Line" chip has only **128 KB** of internal flash at `0x08000000`.}}. Once we compile `libDaisy`, `DaisySP`, FatFS SD card support, and the Spotykach dual-deck DSP engine, our firmware binary is roughly **180–220 KB** — far too large to fit inside the chip's 128 KB internal flash.
+When you first look at the specs for the **Electro-Smith Daisy Seed** (`STM32H750IBK6`) sitting at the heart of the Spotykach PCB, it sounds massive: a 480 MHz ARM Cortex-M7 alongside 64 MB of external SDRAM{{sidenote:Despite its 480 MHz clock speed and 64 MB of external SDRAM, the STM32H750 "Value Line" chip has only **128 KB** of internal flash at `0x08000000`.}}. Then you check the internal flash size: **128 KB**.
 
-To solve this, Spotykach uses `APP_TYPE = BOOT_SRAM` with a custom linker script (`alt_sram.lds`). See the [Hardware Architecture Cheat Sheet](../reference/hardware-architecture.md) and [Glossary](../reference/glossary.md) for the full address table:
+Wait, 128 KB? Turns out, STMicroelectronics designed the STM32H750 "Value Line" with just enough internal flash to hold a bootloader. Once we compile `libDaisy`, `DaisySP`, FatFS SD card support, and the Spotykach dual-deck DSP engine, our firmware binary weighs in around **180–220 KB** — way too chunky to fit inside the chip's 128 KB internal flash.
+
+So, how does Spotykach actually boot? It uses `APP_TYPE = BOOT_SRAM` with a custom linker script (`alt_sram.lds`). See the [Hardware Architecture Cheat Sheet](../reference/hardware-architecture.md) and [Glossary](../reference/glossary.md) for the full address table:
 
 1. **Internal Flash (`0x08000000`, 128 KB)** permanently holds the **Daisy Bootloader** (`bootloader-spotykach-v2.bin`). When you run `make program-dfu`, you never overwrite internal flash.
 2. **External QSPI NOR Flash (`0x90040000`, 8 MB)** stores your compiled firmware binary (`spotykach.bin`) across power cycles.
 3. **Internal AXI SRAM (`SRAM_EXEC` at `0x24000000`, 256 KB)** is where your code actually runs. At power-on, the Daisy Bootloader copies your firmware from QSPI flash into `SRAM_EXEC` and jumps to your program's `Reset_Handler`.
-4. **DTCMRAM (`0x20000000`, 128 KB)** holds the CPU stack (`_estack = 0x20020000`) and initialized `.data` variables for zero-wait-state 480 MHz access.
+4. **DTCMRAM (`0x20000000`, 128 KB)** holds the CPU stack (`_estack = 0x20020000`) and initialised `.data` variables for zero-wait-state 480 MHz access.
 
 ```mermaid caption="Figure 1.1: Spotykach BOOT_SRAM startup sequence and D2 boot button rescue loop"
 flowchart LR
@@ -43,9 +45,9 @@ flowchart LR
 
 ## 2. Preventing Self-Bricking: The `D2` Boot Button Contract {#d2-rescue-contract}
 
-Because a `BOOT_SRAM` firmware runs from RAM immediately after boot, how do you flash a *new* firmware build over the rear USB-C port?
+Here is a fun trap when writing your own `BOOT_SRAM` firmware from scratch: once the bootloader jumps into your `main()` in RAM, your code owns the CPU. If you forget to wire up a way back to the bootloader, the next time you try to flash an update over the rear USB-C port, nothing will answer. You then have to unscrew the enclosure to reach the tiny hardware buttons on the Daisy Seed itself.
 
-In the production Spotykach firmware (`app.cpp` lines 160–163 and `src/hw/hardware.cpp` lines 218–224), the rear **Reset / Boot** button (wired to Daisy Seed pin `seed::D2`) implements a two-tier safety mechanism:
+So, how do we make sure we never brick our board? In the production Spotykach firmware (`app.cpp` lines 160–163 and `src/hw/hardware.cpp` lines 218–224), the rear **Reset / Boot** button (wired to Daisy Seed pin `seed::D2`) implements a two-tier safety mechanism:
 - **Hold for $\ge 3000\text{ ms}$**: While the button is still held down, `AppImpl::Loop()` detects `GetBootButtonHeldTime() >= 3000` and immediately invokes `System::ResetToBootloader(System::BootloaderMode::DAISY_INFINITE_TIMEOUT)`. The bottom pad LEDs begin breathing white so you know your finger can release the button and `make program-dfu` is ready.
 - **Short tap and release ($< 3000\text{ ms}$)**: When you release the button (`!boot_btn_.Pressed() && was_pressed`), `Hardware::ProcessDigitalControls()` calls `HAL_NVIC_SystemReset()`, performing a clean software reboot.
 
@@ -168,9 +170,9 @@ class Application {
 } // namespace spotykach
 ```
 
-Now look at how `AppImpl` in `app.cpp` initializes the STM32H750 clock tree and polls `seed::D2`:
+Now look at how `AppImpl` in `app.cpp` initialises the STM32H750 clock tree and polls `seed::D2`:
 
-```cpp caption="app.cpp — Initializing DaisySeed @ 480 MHz and polling D2 in the foreground loop"
+```cpp caption="app.cpp — Initialising DaisySeed @ 480 MHz and polling D2 in the foreground loop"
 #include "app.h"
 #include "boot_controller.h"
 #include "daisy_seed.h"
@@ -237,7 +239,7 @@ void Application::Loop() {
 } // namespace spotykach
 ```
 
-- **`seed_.Init(true)`**: Passing `true` enables STM32H750 **Boost Mode** (480 MHz CPU clock instead of 400 MHz), configures the Memory Protection Unit (MPU) for non-cached `RAM_D2` DMA, and initializes external 64 MB SDRAM.
+- **`seed_.Init(true)`**: Passing `true` enables STM32H750 **Boost Mode** (480 MHz CPU clock instead of 400 MHz), configures the Memory Protection Unit (MPU) for non-cached `RAM_D2` DMA, and initialises external 64 MB SDRAM.
 - **`boot_btn_.Init(seed::D2, 0, Switch::TYPE_MOMENTARY, Switch::POLARITY_INVERTED, GPIO::Pull::NOPULL)`**: Matches `src/hw/hardware.cpp` line 50 verbatim. The rear button pulls `seed::D2` to ground (`0V`) when pressed, so `Switch::POLARITY_INVERTED` maps `0V` $\to$ `Pressed() == true`, while an external pull-up resistor on the Spotykach PCB handles the idle `3.3V` state (`GPIO::Pull::NOPULL`).
 
 ### Block 4: Firmware Entrypoint & `bleeptools/libDaisy` USB Strings (`main.cpp`) {#block-4-main}
@@ -259,7 +261,7 @@ extern "C" int main(void) {
 }
 ```
 
-- **Why are `USBD_MANUFACTURER_STRING` and `USBD_PRODUCT_STRING_HS` required?** Spotykach's `lib/libDaisy` submodule points to the `bleeptools/libDaisy` (`origin/sk`) fork, which replaced the hardcoded `"Electrosmith"` macros in `src/usbd/usbd_desc.c` with `extern const char*` declarations{{sidenote:If you omit these two `const char*` definitions in any Spotykach firmware target, the ARM linker (`arm-none-eabi-ld`) will fail with `undefined reference to USBD_MANUFACTURER_STRING` whenever USB is linked!}}.
+- **The reason `USBD_MANUFACTURER_STRING` and `USBD_PRODUCT_STRING_HS` live in `main.cpp` is interesting**: Spotykach's `lib/libDaisy` submodule points to the `bleeptools/libDaisy` (`origin/sk`) fork, which replaced the hardcoded `"Electrosmith"` macros in `src/usbd/usbd_desc.c` with `extern const char*` declarations{{sidenote:If you omit these two `const char*` definitions in any Spotykach firmware target, the ARM linker (`arm-none-eabi-ld`) will fail with `undefined reference to USBD_MANUFACTURER_STRING` whenever USB is linked!}}.
 - **`extern "C" int main(void)`**: Disables C++ symbol name-mangling on `main` so the C startup assembly routine (`Reset_Handler` in `startup_stm32h750xx.c`) can jump directly to `main`.
 
 ### Complete Companion Project Listing {#complete-listing}
@@ -354,7 +356,7 @@ test:
 
 ## 4. Interactive Practice & Dual Verification {#practice-and-verification}
 
-:::exercise id="ex-0001" title="Interactive Lab: Complete the BootController & D2 Initialization" badge="Skill Practice • C++17 & libDaisy"
+:::exercise id="ex-0001" title="Interactive Lab: Complete the BootController & D2 Initialisation" badge="Skill Practice • C++17 & libDaisy"
 Fill in the four missing tokens below from memory to complete the compile-time DFU threshold, the 3-second hold check, the falling-edge release check, and the active-low `seed::D2` switch polarity:
 
 ```cpp

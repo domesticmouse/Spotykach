@@ -12,11 +12,13 @@ card:
 
 ## 1. Why Dual Verification?
 
-Embedded firmware often fails in two places:
-1. **Hardware linkage & memory placement errors** (missing `extern` symbols like `USBD_MANUFACTURER_STRING`, overflowing `DTCMRAM`, or misconfigured linker scripts), which only an ARM Cortex-M7 cross-compiler (`arm-none-eabi-g++`) and linker (`alt_sram.lds`) can catch.
-2. **State-machine, math, and DSP logic bugs** (off-by-one hold timers, inverted gate logic, soft-takeover edge cases, or NaN samples), which are slow and tedious to test exclusively by manually pressing buttons on hardware.
+If you have to hold a physical button for three seconds and flash over USB every time you want to check an off-by-one boundary condition, you will lose your mind. Or, moreover, you just won't test it.
 
-Every companion app under `tutorial/apps/<NNNN-slug>/` separates **hardware-independent C++17 logic headers** from **thin `libDaisy` hardware glue**, enabling two complementary verification gates in a single `Makefile`:
+Turns out, embedded firmware usually fails in two distinct places:
+1. **Hardware linkage & memory placement errors** (missing `extern` symbols like `USBD_MANUFACTURER_STRING`, overflowing `DTCMRAM`, or misconfigured linker scripts), which only an ARM Cortex-M7 cross-compiler (`arm-none-eabi-g++`) and linker (`alt_sram.lds`) can catch.
+2. **State-machine, math, and DSP logic bugs** (off-by-one hold timers, inverted gate logic, soft-takeover edge cases, or NaN samples), which are fast and painless to catch on your host machine if you keep your logic decoupled from hardware registers.
+
+So, every companion app under `tutorial/apps/<NNNN-slug>/` separates **hardware-independent C++17 logic headers** from **thin `libDaisy` hardware glue**, enabling two complementary verification gates in a single `Makefile`:
 
 Table: Dual verification targets in `tutorial/apps/<NNNN-slug>/Makefile`
 
@@ -64,7 +66,7 @@ arm-none-eabi-size -A build/*.elf
 
 :::callout-warn
 **Use the Rear PCB USB-C Port (`FS_EXTERNAL`), Not the Daisy Seed Micro-USB Port!**
-Spotykach's custom bootloader (`bootloader-spotykach-v2.bin`) enumerates USB DFU on the **external USB-C connector** on the rear of the Spotykach PCB (`seed::D29`/`D30`).
+Spotykach's custom bootloader (`bootloader-spotykach-v2.bin`) enumerates USB DFU on the **external USB-C connector** on the rear of the Spotykach PCB (`seed::D29`/`D30`). If you plug into the Daisy Seed's internal Micro-USB port while running the Spotykach bootloader, nothing will show up.
 :::
 
 1. Connect a data-capable USB-C cable from your computer to the **rear USB-C port** on the Spotykach PCB.
@@ -77,4 +79,4 @@ Spotykach's custom bootloader (`bootloader-spotykach-v2.bin`) enumerates USB DFU
 make program-dfu
 ```
 
-Note: `dfu-util` frequently prints `Error during download get_status` right as the board resets itself into your new firmware at the end of the transfer — if the progress bar reached `100%`, the flash succeeded!
+Turns out, `dfu-util` loves to complain with `Error during download get_status` at the exact millisecond the board resets itself into your new firmware at the end of the transfer — if the progress bar reached `100%`, the flash succeeded! =)

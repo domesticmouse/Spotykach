@@ -21,7 +21,7 @@ The 256 KB partition of STM32H750 AXI SRAM starting at `0x24000000` (defined in 
 _Avoid_: "Code flash" (in `BOOT_SRAM` mode, instructions execute from AXI SRAM, not internal flash).
 
 **`DTCMRAM`**:
-The 128 KB Data Tightly Coupled Memory at `0x20000000` connected directly to the ARM Cortex-M7 core with zero wait states at 480 MHz, used in `alt_sram.lds` for the CPU stack (`_estack = 0x20020000`), initialized `.data`, and `.dtcmram_bss`. Because the system DMA controllers (`DMA1`/`DMA2`) cannot access `DTCMRAM`, peripheral DMA buffers must never be placed here.
+The 128 KB Data Tightly Coupled Memory at `0x20000000` connected directly to the ARM Cortex-M7 core with zero wait states at 480 MHz, used in `alt_sram.lds` for the CPU stack (`_estack = 0x20020000`), initialised `.data`, and `.dtcmram_bss`. Because the system DMA controllers (`DMA1`/`DMA2`) cannot access `DTCMRAM`, peripheral DMA buffers must never be placed here.
 _Avoid_: "Fast DMA RAM" (`DTCMRAM` is CPU-only; DMA buffers belong in `RAM_D2` via `DMA_BUFFER_MEM_SECTION`).
 
 **`DMA_BUFFER_MEM_SECTION`**:
@@ -29,7 +29,7 @@ The `libDaisy` attribute macro (`__attribute__((section(".sram1_bss")))`) that p
 _Avoid_: "Normal global array for DMA" (standard `.bss` lives in cached AXI SRAM, causing DMA cache incoherency).
 
 **`DSY_SDRAM_BSS`**:
-The `libDaisy` attribute macro (`__attribute__((section(".sdram_bss")))`) that places uninitialized global arrays in the 64 MB external SDRAM chip at `0xC0000000`, used by Spotykach for its dual-deck 60-second stereo audio loop buffers and `Flux` delay lines. Objects in `DSY_SDRAM_BSS` must not rely on dynamic C++ constructors because external SDRAM is initialized inside `Hardware::Init()` after `main()` starts.
+The `libDaisy` attribute macro (`__attribute__((section(".sdram_bss")))`) that places uninitialised global arrays in the 64 MB external SDRAM chip at `0xC0000000`, used by Spotykach for its dual-deck 60-second stereo audio loop buffers and `Flux` delay lines. Objects in `DSY_SDRAM_BSS` must not rely on dynamic C++ constructors because external SDRAM is initialised inside `Hardware::Init()` after `main()` starts.
 _Avoid_: "Heap allocation" (`malloc`/`new` are never used for audio buffers in Spotykach).
 
 ## 2. C++17 Embedded Idioms

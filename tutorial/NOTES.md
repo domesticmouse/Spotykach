@@ -12,7 +12,7 @@
 1. **Lesson 0001 — `0001-boot-sram-and-heartbeat`**: *BOOT_SRAM Memory Layout, C++17 Application Lifecycle & Bootloader Rescue*
    - Unpack how Spotykach boots on the Daisy Seed (`STM32H750IBK6`): why the firmware exceeds 128 KB internal flash, how `APP_TYPE = BOOT_SRAM` and `alt_sram.lds` load code from QSPI flash (`0x90040000`) into fast `SRAM_EXEC` (`0x24000000`), and why `main.cpp` defines `USBD_MANUFACTURER_STRING` (`"Synthux"`) and `USBD_PRODUCT_STRING_HS` (`"Spotykach"`) for the `bleeptools/libDaisy` fork.
    - Learn essential C++17 building blocks used in `main.cpp`, `app.h`, and `src/hw/hardware.cpp`: `namespace`, `class`, `constexpr`, fixed-width integers (`uint32_t`), `enum class`, and the `NOCOPY` deleted copy/move idiom.
-   - Build and test a hardware-abstracted `BootController` modeling Spotykach's `D2` boot button safety mechanism (tap-and-release triggers `HAL_NVIC_SystemReset()`, holding `>= 3000 ms` triggers `System::ResetToBootloader(DAISY_INFINITE_TIMEOUT)` so you can never brick your board), wired into a real `BOOT_SRAM` firmware binary.
+   - Build and test a hardware-abstracted `BootController` modelling Spotykach's `D2` boot button safety mechanism (tap-and-release triggers `HAL_NVIC_SystemReset()`, holding `>= 3000 ms` triggers `System::ResetToBootloader(DAISY_INFINITE_TIMEOUT)` so you can never brick your board), wired into a real `BOOT_SRAM` firmware binary.
 2. **Lesson 0002 — `0002-gpio-gates-and-shift-registers`**: *GPIO Gate/Clock I/O (Transistor Inversion) & Dual CD74HC165 Shift Register Scanning*
    - Bring up Spotykach's digital inputs and outputs: `Clock In` (`D3`), `Gate In A/B` (`D1`/`D0`), `Gate Out A/B` (`D31`/`D32`), and why NPN transistor input buffers invert external signals (`!gpio.Read()`).
    - Implement and test the `ShiftRegister165` driver (`D26` CLK, `D27` DATA, `D7` LOAD) reading 16 switch bits across two daisy-chained 74HC165 chips.
@@ -27,7 +27,7 @@
 7. **Lesson 0007 — `0007-sdram-buffer-and-dual-deck-looper`**: *64 MB External SDRAM (`DSY_SDRAM_BSS`), Dual-Deck Looper & Crossfader*
    - Allocate 60-second stereo 48 kHz float loop buffers in external SDRAM (`0xC0000000`), implement lock-free `Deck` record/play/dub state transitions, and wire the Deck A/B crossfader.
 8. **Lesson 0008 — `0008-granular-slice-tape-generator`**: *3-Voice Granular, Slice & Tape Playback Engine (`Generator`) & Envelope Windowing*
-   - Build the 3-voice window-overlapped playback engine supporting One-Shot, Slice, Granular, and Repeat modes, pitch shifting (`V/Oct` + semitone quantization), and scrubbed playback position.
+   - Build the 3-voice window-overlapped playback engine supporting One-Shot, Slice, Granular, and Repeat modes, pitch shifting (`V/Oct` + semitone quantisation), and scrubbed playback position.
 9. **Lesson 0009 — `0009-grit-and-flux-stereo-fx`**: *Per-Deck Stereo DSP Effects: `Grit` (Overdrive/Bitcrush/DJ Filter) & `Flux` (Stereo Tape Echo)*
    - Implement Spotykach's two per-deck effects chains using `daisysp::Svf`, polynomial soft-clipping, sample-rate/bit-depth decimation, and SDRAM-backed stereo delay lines with feedback filtering.
 10. **Lesson 0010 — `0010-clock-sequencer-sd-and-usb-transfer`**: *48 PPQN Clock, 128-Step Sequencer, FatFS SD WAV Slots & USB Transfer Protocol*

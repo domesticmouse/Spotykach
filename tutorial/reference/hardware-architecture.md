@@ -21,7 +21,7 @@ Table: STM32H750 memory regions configured in `alt_sram.lds`
 | `FLASH` | `0x08000000` | 128 KB | Bootloader only | Houses `bootloader-spotykach-v2.bin`. Never overwritten by `make program-dfu`. |
 | `DTCMRAM` | `0x20000000` | 128 KB | `.data`, `.dtcmram_bss`, `_estack` | 480 MHz zero-wait CPU RAM. **Cannot be accessed by DMA1/DMA2.** |
 | `SRAM_EXEC` | `0x24000000` | 256 KB | `.isr_vector`, `.text`, `.rodata` | Executable firmware code and constants copied from QSPI at boot. |
-| `SRAM` | `0x24040000` | 256 KB | `.bss`, `.heap`, `.reserved_for_stack` | Standard zero-initialized static objects (`app`, `impl`). Cached by D-Cache. |
+| `SRAM` | `0x24040000` | 256 KB | `.bss`, `.heap`, `.reserved_for_stack` | Standard zero-initialised static objects (`app`, `impl`). Cached by D-Cache. |
 | `RAM_D2` | `0x30000000` | 32 KB | `.sram1_bss` (`DMA_BUFFER_MEM_SECTION`) | **Non-cached DMA region** for `dac_buf[2][48]`, ADC DMA, and WS2812 PWM DMA. |
 | `SDRAM` | `0xC0000000` | 64 MB | `.sdram_bss` (`DSY_SDRAM_BSS`) | External FMC SDRAM (`SDRAMBuffer`, dual 60 s stereo decks, `Flux` delay lines). |
 | `QSPIFLASH` | `0x90000000` | 8 MB | `.qspiflash_*` / `PersistentStorage` | Non-volatile flash storing the `BOOT_SRAM` image (`0x90040000`) and calibration `Settings`. |
